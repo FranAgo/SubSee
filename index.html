@@ -693,7 +693,6 @@
   let blueRate      = null;
   let pendingDelete = null;
   let pieAnimFrame  = null;
-  let pieProgress   = 0;
 
   // ─── INIT ───
   (async function init() {
@@ -708,9 +707,11 @@
       // dolarapi.com — CORS habilitado, gratuita
       const res  = await fetch('https://dolarapi.com/v1/dolares/blue');
       const data = await res.json();
-      blueRate = parseFloat(data.venta);
-      document.getElementById('rate-text').textContent =
-        `Dólar blue venta: $${formatNum(blueRate, 0)}`;
+      const parsed = parseFloat(data.venta);
+      blueRate = isNaN(parsed) ? null : parsed;
+      document.getElementById('rate-text').textContent = blueRate
+        ? `Dólar blue venta: $${formatNum(blueRate, 0)}`
+        : 'Cotización no disponible';
       document.getElementById('manual-rate').value = '';
     } catch (e) {
       document.getElementById('rate-text').textContent = 'Error al obtener cotización';
@@ -744,15 +745,22 @@
       renderAll();
       return;
     }
+    const list = document.getElementById('sub-list');
+    list.innerHTML = '<div class="empty-state">Cargando…</div>';
     try {
       const url = `${APPS_SCRIPT_URL}?action=get&token=${encodeURIComponent(SECRET_TOKEN)}`;
       const res  = await fetch(url);
       const data = await res.json();
+      if (data.error) throw new Error(data.error);
       subscriptions = data.subscriptions || [];
       document.getElementById('setup-notice').style.display = 'none';
       renderAll();
     } catch (e) {
-      showToast('No se pudo conectar con Google Sheets.', 'error');
+      list.innerHTML = `
+        <div class="empty-state">
+          No se pudo conectar con Google Sheets.<br>
+          <button onclick="loadSubscriptions()" style="margin-top:12px;background:none;border:1px solid var(--border);color:var(--gold);border-radius:var(--radius-sm);padding:6px 16px;cursor:pointer;font-family:inherit;font-size:0.8rem;">↻ Reintentar</button>
+        </div>`;
     }
   }
 
@@ -787,11 +795,12 @@
     }
 
     try {
-      await fetch(APPS_SCRIPT_URL, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ action: 'add', token: SECRET_TOKEN, ...newSub })
+      const res  = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        body:   JSON.stringify({ action: 'add', token: SECRET_TOKEN, ...newSub })
       });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
       subscriptions.push(newSub);
       clearForm();
       renderAll();
@@ -822,26 +831,38 @@
   async function confirmDelete() {
     if (!pendingDelete) return;
     const id  = pendingDelete;
+
+    // Bloquear el botón confirmar mientras el request está en vuelo
+    const btnConfirm = document.getElementById('btn-confirm-delete');
+    btnConfirm.disabled = true;
+    btnConfirm.innerHTML = '<span class="spinner"></span>Eliminando…';
+
     closeDialog();
 
     if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.startsWith('REEMPLAZAR')) {
       subscriptions = subscriptions.filter(s => s.id !== id);
       renderAll();
       showToast('Suscripción eliminada (modo demo).', 'success');
+      btnConfirm.disabled = false;
+      btnConfirm.textContent = 'Eliminar';
       return;
     }
 
     try {
-      await fetch(APPS_SCRIPT_URL, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ action: 'delete', token: SECRET_TOKEN, id })
+      const res  = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        body:   JSON.stringify({ action: 'delete', token: SECRET_TOKEN, id })
       });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
       subscriptions = subscriptions.filter(s => s.id !== id);
       renderAll();
       showToast('Suscripción eliminada.', 'success');
     } catch (e) {
       showToast('Error al eliminar en Sheets.', 'error');
+    } finally {
+      btnConfirm.disabled = false;
+      btnConfirm.textContent = 'Eliminar';
     }
   }
 
@@ -880,7 +901,7 @@
       return `
         <div class="sub-item" style="animation-delay: ${i * 0.05}s">
           <div class="sub-dot" style="background:${col}"></div>
-          <div class="sub-name" data-name="${encodeHTML(sub.name)}"></div>
+          <div class="sub-name"></div>
           <div class="sub-pct">${pct}%</div>
           <div class="sub-amount">${formatCurrency(amt, currency)}</div>
           <button class="sub-delete" onclick="requestDelete('${sub.id}')" title="Eliminar">×</button>
@@ -905,7 +926,6 @@
   // ─── PIE CHART (canvas nativo) ───
   function animatePie() {
     if (pieAnimFrame) cancelAnimationFrame(pieAnimFrame);
-    pieProgress = 0;
     drawPie(0);
 
     const startTime = performance.now();
