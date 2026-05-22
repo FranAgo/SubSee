@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SubSee</title>
+
+  <!-- Fonts: Playfair Display (display/numbers) + DM Sans (labels/UI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ─── RESET & BASE ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0d0f14;
+      --surface:     #141720;
+      --surface2:    #1c2030;
+      --border:      rgba(255,255,255,0.07);
+      --text:        #e8e4dc;
+      --text-muted:  #7a7d8a;
+      --gold:        #c9a84c;
+      --gold-light:  #e8c97a;
+      --gold-dim:    rgba(201,168,76,0.15);
+      --red:         #e05a5a;
+      --green:       #5abf8e;
+      --radius:      16px;
+      --radius-sm:   8px;
+
+      /* Pie chart colors */
+      --c1: #c9a84c; --c2: #5abf8e; --c3: #5a8fe0;
+      --c4: #c05ae0; --c5: #e0875a; --c6: #5ab8e0;
+      --c7: #e05a8f; --c8: #8fe05a; --c9: #e0c35a;
+      --c10: #5ae0b8;
+    }
+
+    html { font-size: 16px; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── BACKGROUND TEXTURE ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(201,168,76,0.04) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 80% at 85% 80%, rgba(90,143,224,0.04) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── LAYOUT ─── */
+    .app {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    /* ─── HEADER ─── */
+    .header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 40px;
+      opacity: 0;
+      transform: translateY(-16px);
+      animation: fadeDown 0.6s cubic-bezier(0.22,1,0.36,1) 0.1s forwards;
+    }
+
+    .header-left h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.8rem, 4vw, 2.4rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+
+    .header-left h1 span {
+      color: var(--gold);
+      font-style: italic;
+    }
+
+    .header-left .subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-top: 6px;
+    }
+
+    /* ─── CURRENCY TOGGLE ─── */
+    .currency-toggle {
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 4px;
+      gap: 2px;
+    }
+
+    .currency-toggle button {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      padding: 7px 18px;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .currency-toggle button.active {
+      background: var(--gold);
+      color: #0d0f14;
+    }
+
+    /* ─── DOLAR RATE BAR ─── */
+    .rate-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      opacity: 0;
+      animation: fadeUp 0.5s ease 0.3s forwards;
+    }
+
+    .rate-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--gold-dim);
+      border: 1px solid rgba(201,168,76,0.25);
+      border-radius: 100px;
+      padding: 5px 14px;
+      color: var(--gold-light);
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    .rate-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--gold);
+      animation: pulse 2s infinite;
+    }
+
+    .rate-bar input[type="number"] {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem;
+      padding: 5px 10px;
+      width: 100px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .rate-bar input[type="number"]:focus {
+      border-color: var(--gold);
+    }
+
+    .rate-bar .rate-refresh {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .rate-bar .rate-refresh:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    /* ─── MAIN GRID ─── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 640px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ─── CARD ─── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .card.anim-1 { animation: fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.25s forwards; }
+    .card.anim-2 { animation: fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.4s forwards; }
+    .card.anim-3 {
+      grid-column: 1 / -1;
+      animation: fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.55s forwards;
+    }
+
+    .card-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    /* ─── PIE CHART ─── */
+    .chart-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #pie-canvas {
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      margin: 0 auto 24px;
+    }
+
+    .chart-total {
+      text-align: center;
+    }
+
+    .chart-total .total-amount {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.9rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      color: var(--gold-light);
+    }
+
+    .chart-total .total-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    /* ─── SUBSCRIPTIONS LIST ─── */
+    .sub-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .sub-item {
+      display: grid;
+      grid-template-columns: 14px 1fr auto auto;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.2s;
+      animation: fadeUp 0.4s ease both;
+    }
+
+    .sub-item:last-child { border-bottom: none; }
+
+    .sub-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .sub-name {
+      font-size: 0.9rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sub-pct {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-align: right;
+      min-width: 36px;
+    }
+
+    .sub-amount {
+      font-family: 'Playfair Display', serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--gold-light);
+      text-align: right;
+      min-width: 80px;
+    }
+
+    .sub-delete {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 4px;
+      border-radius: 4px;
+      line-height: 1;
+      transition: color 0.2s, background 0.2s;
+      opacity: 0;
+    }
+
+    .sub-item:hover .sub-delete { opacity: 1; }
+
+    .sub-delete:hover {
+      color: var(--red);
+      background: rgba(224,90,90,0.1);
+    }
+
+    /* ─── ADD FORM ─── */
+    .add-form {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    @media (max-width: 640px) {
+      .add-form { grid-template-columns: 1fr 1fr; }
+      .add-form .btn-add { grid-column: 1 / -1; }
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .form-group input,
+    .form-group select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: var(--gold);
+    }
+
+    .form-group select option {
+      background: var(--surface2);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn-add {
+      background: var(--gold);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #0d0f14;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 10px 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      letter-spacing: 0.04em;
+      align-self: flex-end;
+    }
+
+    .btn-add:hover { background: var(--gold-light); transform: translateY(-1px); }
+    .btn-add:active { transform: translateY(0); }
+    .btn-add:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ─── SETUP NOTICE ─── */
+    .setup-notice {
+      background: rgba(201,168,76,0.06);
+      border: 1px solid rgba(201,168,76,0.2);
+      border-radius: var(--radius-sm);
+      padding: 16px 20px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .setup-notice code {
+      background: var(--surface2);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 0.78rem;
+      color: var(--gold-light);
+    }
+
+    .setup-notice a { color: var(--gold); }
+
+    /* ─── EMPTY STATE ─── */
+    .empty-state {
+      text-align: center;
+      padding: 32px 0;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    /* ─── STATUS TOAST ─── */
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 12px 24px;
+      font-size: 0.82rem;
+      color: var(--text);
+      transition: transform 0.35s cubic-bezier(0.22,1,0.36,1), opacity 0.35s;
+      opacity: 0;
+      z-index: 100;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .toast.success { border-color: rgba(90,191,142,0.4); color: var(--green); }
+    .toast.error   { border-color: rgba(224,90,90,0.4);  color: var(--red); }
+
+    /* ─── CONFIRM DIALOG ─── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+
+    .overlay.show { opacity: 1; pointer-events: all; }
+
+    .dialog {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      max-width: 360px;
+      width: 90%;
+      transform: scale(0.95);
+      transition: transform 0.25s cubic-bezier(0.22,1,0.36,1);
+      text-align: center;
+    }
+
+    .overlay.show .dialog { transform: scale(1); }
+
+    .dialog h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.15rem;
+      margin-bottom: 10px;
+    }
+
+    .dialog p {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .dialog-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .btn-cancel {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      padding: 9px 22px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-cancel:hover { border-color: var(--text-muted); color: var(--text); }
+
+    .btn-confirm-delete {
+      background: var(--red);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 9px 22px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-confirm-delete:hover { opacity: 0.85; }
+
+    /* ─── ANIMATIONS ─── */
+    @keyframes fadeDown {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    /* ─── SPINNER ─── */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.15);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ─── HEADER ─── -->
+  <header class="header">
+    <div class="header-left">
+      <h1>Mis <span>Suscripciones</span></h1>
+      <p class="subtitle">Panel de control · Gastos recurrentes</p>
+    </div>
+    <div class="currency-toggle">
+      <button id="btn-ars" class="active" onclick="setCurrency('ARS')">ARS</button>
+      <button id="btn-usd" onclick="setCurrency('USD')">USD</button>
+    </div>
+  </header>
+
+  <!-- ─── DÓLAR RATE BAR ─── -->
+  <div class="rate-bar">
+    <div class="rate-badge" id="rate-badge">
+      <div class="rate-dot"></div>
+      <span id="rate-text">Cargando dólar blue…</span>
+    </div>
+    <span style="color: var(--text-muted);">o ingresá manual:</span>
+    <input type="number" id="manual-rate" placeholder="ej: 1250" min="1" />
+    <button class="rate-refresh" onclick="fetchRate()">↻ Actualizar</button>
+  </div>
+
+  <!-- ─── SETUP NOTICE ─── -->
+  <div class="setup-notice" id="setup-notice">
+    ⚙️ <strong>Configuración requerida:</strong>
+    Antes de usar la app, abrí el archivo <code>index.html</code> y completá las variables
+    <code>APPS_SCRIPT_URL</code> y <code>SECRET_TOKEN</code> al inicio del script con los valores
+    de tu Google Apps Script. Consultá el <code>README.md</code> para el paso a paso.
+    <span id="dismiss-setup" style="color: var(--gold); cursor: pointer; margin-left: 8px;" onclick="document.getElementById('setup-notice').style.display='none'">Ocultar</span>
+  </div>
+
+  <!-- ─── MAIN GRID ─── -->
+  <div class="main-grid">
+
+    <!-- PIE CHART -->
+    <div class="card anim-1">
+      <div class="card-label">Distribución</div>
+      <div class="chart-wrapper">
+        <canvas id="pie-canvas" width="220" height="220"></canvas>
+        <div class="chart-total">
+          <div class="total-amount" id="total-amount">$ 0</div>
+          <div class="total-label" id="total-label">Total mensual en ARS</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIST -->
+    <div class="card anim-2">
+      <div class="card-label">Detalle</div>
+      <div class="sub-list" id="sub-list">
+        <div class="empty-state">No hay suscripciones cargadas.</div>
+      </div>
+    </div>
+
+    <!-- ADD FORM -->
+    <div class="card anim-3">
+      <div class="card-label">Agregar suscripción</div>
+      <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: flex-end;">
+        <div class="form-group">
+          <label>Nombre</label>
+          <input type="text" id="f-name" placeholder="ej: Netflix" maxlength="60" />
+        </div>
+        <div class="form-group">
+          <label>Monto</label>
+          <input type="number" id="f-amount" placeholder="0" min="0" step="0.01" />
+        </div>
+        <div class="form-group">
+          <label>Moneda</label>
+          <select id="f-currency">
+            <option value="ARS">ARS</option>
+            <option value="USD">USD</option>
+          </select>
+        </div>
+        <button class="btn-add" id="btn-add" onclick="addSubscription()">+ Agregar</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ─── CONFIRM DIALOG ─── -->
+<div class="overlay" id="overlay">
+  <div class="dialog">
+    <h3>Eliminar suscripción</h3>
+    <p id="dialog-msg">¿Querés eliminar esta suscripción? Esta acción no se puede deshacer.</p>
+    <div class="dialog-actions">
+      <button class="btn-cancel" onclick="closeDialog()">Cancelar</button>
+      <button class="btn-confirm-delete" id="btn-confirm-delete" onclick="confirmDelete()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── TOAST ─── -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ══════════════════════════════════════════════
+  //  ⚙️  CONFIGURACIÓN — COMPLETAR ANTES DE USAR
+  // ══════════════════════════════════════════════
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzGY32oWIotNiZC_Uuo-5kTvUQQF7_qimglHK_4LGAlPKBPnAcnQ1tQfC2VYKBgBFw--A/exec';
+  const SECRET_TOKEN    = 'o!%,AEDFp5X!.l[cliDERYfHdhBLO+Gj';
+  // ══════════════════════════════════════════════
+
+  const PIE_COLORS = [
+    '#c9a84c','#5abf8e','#5a8fe0','#c05ae0','#e0875a',
+    '#5ab8e0','#e05a8f','#8fe05a','#e0c35a','#5ae0b8'
+  ];
+
+  let subscriptions = [];
+  let currency      = 'ARS';
+  let blueRate      = null;
+  let pendingDelete = null;
+  let pieAnimFrame  = null;
+  let pieProgress   = 0;
+
+  // ─── INIT ───
+  (async function init() {
+    await fetchRate();
+    await loadSubscriptions();
+  })();
+
+  // ─── DÓLAR BLUE ───
+  async function fetchRate() {
+    document.getElementById('rate-text').textContent = 'Actualizando…';
+    try {
+      // dolarapi.com — CORS habilitado, gratuita
+      const res  = await fetch('https://dolarapi.com/v1/dolares/blue');
+      const data = await res.json();
+      blueRate = parseFloat(data.venta);
+      document.getElementById('rate-text').textContent =
+        `Dólar blue venta: $${formatNum(blueRate, 0)}`;
+      document.getElementById('manual-rate').value = '';
+    } catch (e) {
+      document.getElementById('rate-text').textContent = 'Error al obtener cotización';
+      showToast('No se pudo obtener el dólar blue. Ingresalo manualmente.', 'error');
+    }
+  }
+
+  // Actualiza la tasa si el usuario la ingresa manualmente
+  document.getElementById('manual-rate').addEventListener('input', function() {
+    const v = parseFloat(this.value);
+    if (v > 0) {
+      blueRate = v;
+      document.getElementById('rate-text').textContent =
+        `Dólar blue (manual): $${formatNum(v, 0)}`;
+      renderAll();
+    }
+  });
+
+  // ─── GOOGLE SHEETS — LEER ───
+  async function loadSubscriptions() {
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.startsWith('REEMPLAZAR')) {
+      // Modo demo: datos de ejemplo
+      subscriptions = [
+        { id: 'demo-1', name: 'Netflix',   amount: 4999,  currency: 'ARS', created_at: new Date().toISOString() },
+        { id: 'demo-2', name: 'Spotify',   amount: 3299,  currency: 'ARS', created_at: new Date().toISOString() },
+        { id: 'demo-3', name: 'ChatGPT',   amount: 20,    currency: 'USD', created_at: new Date().toISOString() },
+        { id: 'demo-4', name: 'iCloud',    amount: 2499,  currency: 'ARS', created_at: new Date().toISOString() },
+        { id: 'demo-5', name: 'YouTube',   amount: 5499,  currency: 'ARS', created_at: new Date().toISOString() },
+      ];
+      document.getElementById('setup-notice').style.display = '';
+      renderAll();
+      return;
+    }
+    try {
+      const url = `${APPS_SCRIPT_URL}?action=get&token=${encodeURIComponent(SECRET_TOKEN)}`;
+      const res  = await fetch(url);
+      const data = await res.json();
+      subscriptions = data.subscriptions || [];
+      document.getElementById('setup-notice').style.display = 'none';
+      renderAll();
+    } catch (e) {
+      showToast('No se pudo conectar con Google Sheets.', 'error');
+    }
+  }
+
+  // ─── GOOGLE SHEETS — AGREGAR ───
+  async function addSubscription() {
+    const name     = document.getElementById('f-name').value.trim();
+    const amount   = parseFloat(document.getElementById('f-amount').value);
+    const cur      = document.getElementById('f-currency').value;
+
+    if (!name || isNaN(amount) || amount <= 0) {
+      showToast('Completá todos los campos correctamente.', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('btn-add');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Guardando…';
+
+    const id         = crypto.randomUUID();
+    const created_at = new Date().toISOString();
+    const newSub     = { id, name, amount, currency: cur, created_at };
+
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.startsWith('REEMPLAZAR')) {
+      // Modo demo
+      subscriptions.push(newSub);
+      clearForm();
+      renderAll();
+      showToast('Suscripción agregada (modo demo).', 'success');
+      btn.disabled = false;
+      btn.textContent = '+ Agregar';
+      return;
+    }
+
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ action: 'add', token: SECRET_TOKEN, ...newSub })
+      });
+      subscriptions.push(newSub);
+      clearForm();
+      renderAll();
+      showToast('Suscripción agregada.', 'success');
+    } catch (e) {
+      showToast('Error al guardar en Sheets.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '+ Agregar';
+    }
+  }
+
+  // ─── GOOGLE SHEETS — ELIMINAR ───
+  function requestDelete(id) {
+    const sub = subscriptions.find(s => s.id === id);
+    if (!sub) return;
+    pendingDelete = id;
+    document.getElementById('dialog-msg').textContent =
+      `¿Querés eliminar "${sub.name}"? Esta acción no se puede deshacer.`;
+    document.getElementById('overlay').classList.add('show');
+  }
+
+  function closeDialog() {
+    pendingDelete = null;
+    document.getElementById('overlay').classList.remove('show');
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    const id  = pendingDelete;
+    closeDialog();
+
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.startsWith('REEMPLAZAR')) {
+      subscriptions = subscriptions.filter(s => s.id !== id);
+      renderAll();
+      showToast('Suscripción eliminada (modo demo).', 'success');
+      return;
+    }
+
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ action: 'delete', token: SECRET_TOKEN, id })
+      });
+      subscriptions = subscriptions.filter(s => s.id !== id);
+      renderAll();
+      showToast('Suscripción eliminada.', 'success');
+    } catch (e) {
+      showToast('Error al eliminar en Sheets.', 'error');
+    }
+  }
+
+  // ─── RENDER PRINCIPAL ───
+  function renderAll() {
+    renderList();
+    animatePie();
+    updateTotal();
+  }
+
+  // ─── CONVERSIÓN ───
+  function toDisplayCurrency(sub) {
+    if (sub.currency === currency) return sub.amount;
+    if (!blueRate) return sub.amount; // fallback: sin conversión
+    if (sub.currency === 'ARS' && currency === 'USD') return sub.amount / blueRate;
+    if (sub.currency === 'USD' && currency === 'ARS') return sub.amount * blueRate;
+    return sub.amount;
+  }
+
+  // ─── LISTA ───
+  function renderList() {
+    const list = document.getElementById('sub-list');
+    if (subscriptions.length === 0) {
+      list.innerHTML = '<div class="empty-state">No hay suscripciones cargadas.</div>';
+      return;
+    }
+
+    const amounts = subscriptions.map(s => toDisplayCurrency(s));
+    const total   = amounts.reduce((a, b) => a + b, 0);
+
+    list.innerHTML = subscriptions.map((sub, i) => {
+      const amt = amounts[i];
+      const pct = total > 0 ? (amt / total * 100).toFixed(1) : '0.0';
+      const col = PIE_COLORS[i % PIE_COLORS.length];
+      // textContent is set via dataset to avoid XSS (Julia ✓)
+      return `
+        <div class="sub-item" style="animation-delay: ${i * 0.05}s">
+          <div class="sub-dot" style="background:${col}"></div>
+          <div class="sub-name" data-name="${encodeHTML(sub.name)}"></div>
+          <div class="sub-pct">${pct}%</div>
+          <div class="sub-amount">${formatCurrency(amt, currency)}</div>
+          <button class="sub-delete" onclick="requestDelete('${sub.id}')" title="Eliminar">×</button>
+        </div>`;
+    }).join('');
+
+    // Setear nombres vía textContent para evitar XSS
+    list.querySelectorAll('.sub-name').forEach((el, i) => {
+      el.textContent = subscriptions[i].name;
+    });
+  }
+
+  // ─── TOTAL ───
+  function updateTotal() {
+    const amounts = subscriptions.map(s => toDisplayCurrency(s));
+    const total   = amounts.reduce((a, b) => a + b, 0);
+    document.getElementById('total-amount').textContent = formatCurrency(total, currency);
+    document.getElementById('total-label').textContent  =
+      `Total mensual en ${currency}`;
+  }
+
+  // ─── PIE CHART (canvas nativo) ───
+  function animatePie() {
+    if (pieAnimFrame) cancelAnimationFrame(pieAnimFrame);
+    pieProgress = 0;
+    drawPie(0);
+
+    const startTime = performance.now();
+    const duration  = 800; // ms
+
+    function step(now) {
+      const t = Math.min((now - startTime) / duration, 1);
+      // easeOutExpo
+      const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+      drawPie(eased);
+      if (t < 1) pieAnimFrame = requestAnimationFrame(step);
+    }
+
+    pieAnimFrame = requestAnimationFrame(step);
+  }
+
+  function drawPie(progress) {
+    const canvas = document.getElementById('pie-canvas');
+    const ctx    = canvas.getContext('2d');
+    const cx     = canvas.width / 2;
+    const cy     = canvas.height / 2;
+    const r      = cx - 12;
+    const hole   = r * 0.52; // donut hole
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const amounts = subscriptions.map(s => toDisplayCurrency(s));
+    const total   = amounts.reduce((a, b) => a + b, 0);
+
+    if (total === 0 || subscriptions.length === 0) {
+      // Empty state: grey circle
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.arc(cx, cy, hole, Math.PI * 2, 0, true);
+      ctx.fillStyle = '#1c2030';
+      ctx.fill();
+      return;
+    }
+
+    let startAngle = -Math.PI / 2;
+    const gap      = 0.012; // small gap between slices
+
+    subscriptions.forEach((sub, i) => {
+      const slice     = (amounts[i] / total) * Math.PI * 2 * progress;
+      const endAngle  = startAngle + slice - (slice > 0.05 ? gap : 0);
+      const color     = PIE_COLORS[i % PIE_COLORS.length];
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, startAngle, endAngle);
+      ctx.arc(cx, cy, hole, endAngle, startAngle, true);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur  = 8;
+      ctx.fill();
+      ctx.shadowBlur  = 0;
+
+      startAngle += slice;
+    });
+  }
+
+  // ─── CURRENCY TOGGLE ───
+  function setCurrency(c) {
+    currency = c;
+    document.getElementById('btn-ars').classList.toggle('active', c === 'ARS');
+    document.getElementById('btn-usd').classList.toggle('active', c === 'USD');
+    renderAll();
+  }
+
+  // ─── UTILIDADES ───
+  function formatNum(n, decimals = 2) {
+    return n.toLocaleString('es-AR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  }
+
+  function formatCurrency(n, cur) {
+    if (cur === 'ARS') return `$\u202F${formatNum(n, 0)}`;
+    return `U$D\u202F${formatNum(n, 2)}`;
+  }
+
+  function encodeHTML(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function clearForm() {
+    document.getElementById('f-name').value   = '';
+    document.getElementById('f-amount').value = '';
+    document.getElementById('f-currency').value = 'ARS';
+  }
+
+  let toastTimer = null;
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent  = msg;
+    t.className    = `toast ${type} show`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  // Enter en el form
+  ['f-name','f-amount','f-currency'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') addSubscription();
+    });
+  });
+
+  // Cerrar dialog con Escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeDialog();
+  });
+</script>
+</body>
+</html>
